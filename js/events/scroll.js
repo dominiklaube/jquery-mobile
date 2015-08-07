@@ -1,85 +1,45 @@
-//>>excludeStart("jqmBuildExclude", pragmas.jqmBuildExclude);
-//>>description: Scroll events including: scrollstart, scrollstop
-//>>label: Scroll
-//>>group: Events
+var scrollEvent = "touchmove scroll";
 
-define( [ "jquery" ], function( jQuery ) {
-//>>excludeEnd("jqmBuildExclude");
+// also handles scrollstop
+$.event.special.scrollstart = {
 
-(function( $, window, undefined ) {
-	var scrollEvent = "touchmove scroll";
+  enabled: true,
+  setup: function() {
 
-	// setup new event shortcuts
-	$.each( [ "scrollstart", "scrollstop" ], function( i, name ) {
+    var thisObject = this,
+      $this = $( thisObject ),
+      scrolling,
+      timer;
 
-		$.fn[ name ] = function( fn ) {
-			return fn ? this.bind( name, fn ) : this.trigger( name );
-		};
+    function trigger( event, state ) {
+      var originalEventType = event.type;
 
-		// jQuery < 1.8
-		if ( $.attrFn ) {
-			$.attrFn[ name ] = true;
-		}
-	});
+      scrolling = state;
 
-	// also handles scrollstop
-	$.event.special.scrollstart = {
+      event.type = scrolling ? "scrollstart" : "scrollstop";
+      $.event.dispatch.call( thisObject, event );
+      event.type = originalEventType;
+    }
+    var handler = $.event.special.scrollstart.handler = function ( event ) {
 
-		enabled: true,
-		setup: function() {
+      if ( !$.event.special.scrollstart.enabled ) {
+        return;
+      }
 
-			var thisObject = this,
-				$this = $( thisObject ),
-				scrolling,
-				timer;
+      if ( !scrolling ) {
+        trigger( event, true );
+      }
 
-			function trigger( event, state ) {
-				var originalEventType = event.type;
+      clearTimeout( timer );
+      timer = setTimeout( function() {
+        trigger( event, false );
+      }, 200 );
+    };
 
-				scrolling = state;
-
-				event.type = scrolling ? "scrollstart" : "scrollstop";
-				$.event.dispatch.call( thisObject, event );
-				event.type = originalEventType;
-			}
-
-			// iPhone triggers scroll after a small delay; use touchmove instead
-			$this.bind( scrollEvent, function( event ) {
-
-				if ( !$.event.special.scrollstart.enabled ) {
-					return;
-				}
-
-				if ( !scrolling ) {
-					trigger( event, true );
-				}
-
-				clearTimeout( timer );
-				timer = setTimeout( function() {
-					trigger( event, false );
-				}, 50 );
-			});
-		},
-		teardown: function() {
-			$( this ).unbind( scrollEvent );
-		}
-	};
-
-	$.each({
-		scrollstop: "scrollstart"
-	}, function( event, sourceEvent ) {
-
-		$.event.special[ event ] = {
-			setup: function() {
-				$( this ).bind( sourceEvent, $.noop );
-			},
-			teardown: function() {
-				$( this ).unbind( sourceEvent );
-			}
-		};
-	});
-
-})( jQuery, this );
-//>>excludeStart("jqmBuildExclude", pragmas.jqmBuildExclude);
-});
-//>>excludeEnd("jqmBuildExclude");
+    // iPhone triggers scroll after a small delay; use touchmove instead
+    $this.bind( scrollEvent, handler );
+  },
+  teardown: function() {
+    $( this ).unbind( scrollEvent, $.event.special.scrollstart.handler );
+  }
+};
